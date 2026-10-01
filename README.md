@@ -4,6 +4,11 @@ Hands-on demos for the protocols behind modern AI agents. Each section explains 
 
 > ⚠️ These specs evolve quickly (A2UI, for example, renamed its messages between versions). Pin the versions you use and check the official docs.
 
+a visual representation
+
+![ai-protocol-overview](./ai-protocol-overview.png)
+
+
 ## Table of Contents
 
 - [The Big Picture](#the-big-picture)

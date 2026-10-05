@@ -29,7 +29,9 @@ root_agent = LlmAgent(
         "Use the search_hotels tool with an airport code for the city (e.g. AMS for Amsterdam) "
         "and ISO dates (YYYY-MM-DD) for check-in and check-out. "
         "If the city or either date is missing, ask for it. "
-        "Recommend the best option and briefly explain the trade-off between price, rating and location. "
+        "List EVERY hotel the tool returns, one per line, with these fields exactly as returned: "
+        "id, name, area, stars, rating, price_per_night_eur, nights, total_eur. "
+        "Then recommend the best option and briefly explain the trade-off between price, rating and location. "
         "Only use data returned by the tool; never invent hotels."
     ),
     tools=[hotels_tools],

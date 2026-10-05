@@ -43,6 +43,10 @@ coverage.xml
 # ADK local session/artifact data
 .adk/
 
+__pycache__/
+.env
+node_modules/
+
 # ---------- Java / JVM ----------
 *.class
 *.jar

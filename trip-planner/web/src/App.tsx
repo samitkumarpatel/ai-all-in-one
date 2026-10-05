@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { runAgent, type AguiEvent, type ChatMessage } from "./agui";
+import { extractA2uiOperations, Surfaces, useA2ui } from "./a2ui";
 import "./App.css";
 
 type LogEntry = { n: number; event: AguiEvent };
@@ -11,12 +12,18 @@ export default function App() {
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const threadId = useRef(crypto.randomUUID());
   const counter = useRef(0);
 
+  // A2UI: user actions (e.g. clicking "Book") come back here
+  const { surfaces, apply } = useA2ui((action) => {
+    setNotice(`UI action received (demo only): ${JSON.stringify(action)}`);
+  });
+
   function handleEvent(event: AguiEvent) {
-    // 1) Raw event log (the point of the demo: see AG-UI events live)
+    // 1) Raw event log
     setLog((prev) => [...prev, { n: ++counter.current, event }]);
 
     // 2) Map events to UI state
@@ -32,6 +39,18 @@ export default function App() {
       case "TOOL_CALL_START":
         setActivity((prev) => [...prev, `🔧 ${event.toolCallName}`]);
         break;
+      case "TOOL_CALL_RESULT": {
+        // A2UI arrives as a tool result containing { a2ui_operations: [...] }
+        const ops = extractA2uiOperations(event.content);
+        if (ops) {
+          try {
+            apply(ops);
+          } catch (e) {
+            setError(`A2UI render failed: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+        break;
+      }
       case "RUN_ERROR":
         setError(event.message ?? "Run failed");
         break;
@@ -48,6 +67,7 @@ export default function App() {
     setMessages(history);
     setInput("");
     setError(null);
+    setNotice(null);
     setActivity([]);
     setRunning(true);
 
@@ -67,7 +87,9 @@ export default function App() {
 
         <div className="messages">
           {messages.length === 0 && (
-            <p className="hint">Try: “I’m in Copenhagen and want a weekend in Amsterdam on 2026-10-10.”</p>
+            <p className="hint">
+              Try: “Plan a weekend in Amsterdam from Copenhagen. Fly out 2026-10-10, back 2026-10-12.”
+            </p>
           )}
           {messages.map((m) => (
             <div key={m.id} className={`bubble ${m.role}`}>
@@ -75,6 +97,11 @@ export default function App() {
             </div>
           ))}
           {activity.length > 0 && <div className="activity">{activity.join("  ·  ")}</div>}
+
+          {/* A2UI surfaces rendered by @a2ui/react */}
+          <Surfaces surfaces={surfaces} />
+
+          {notice && <div className="notice">{notice}</div>}
           {error && <div className="error">{error}</div>}
         </div>
 

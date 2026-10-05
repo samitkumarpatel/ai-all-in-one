@@ -1,0 +1,74 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111318;
+    --fg: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #2a2f3a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.shell header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shell header h1 { font-size: 1.25rem; margin: 0; }
+.shell header span { color: var(--muted); font-size: 0.85rem; }
+
+.shell main { flex: 1; min-height: 0; }
+.chat { height: 100%; }
+
+/* A2UI card overrides (see catalog.tsx) */
+.hotel-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.book-btn {
+  margin-top: 8px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.book-btn.done {
+  background: #16a34a;
+  cursor: default;
+}

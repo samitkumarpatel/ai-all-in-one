@@ -111,3 +111,20 @@ body {
   .layout { grid-template-columns: 1fr; grid-template-rows: 1fr 40vh; }
   .log { border-left: 0; border-top: 1px solid var(--border); }
 }
+
+/* A2UI surfaces (Option B) */
+.surfaces {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 80%;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.notice {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}

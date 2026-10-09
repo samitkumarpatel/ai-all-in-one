@@ -10,23 +10,24 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@copilotkit/a2ui-renderer": "^x.y.z",
-    "@copilotkit/react-core": "^x.y.z",
-    "react": "^x.y.z",
-    "react-dom": "^x.y.z",
-    "zod": "^x.y.z"
+    "@copilotkit/a2ui-renderer": "1.77.2",
+    "@copilotkit/react-core": "1.77.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@eslint/js": "^x.y.z",
-    "@types/react": "^x.y.z",
-    "@types/react-dom": "^x.y.z",
-    "@vitejs/plugin-react": "^x.y.z",
-    "eslint": "^x.y.z",
-    "eslint-plugin-react-hooks": "^x.y.z",
-    "eslint-plugin-react-refresh": "^x.y.z",
-    "globals": "^x.y.z",
-    "typescript": "~x.y.z",
-    "typescript-eslint": "^x.y.z",
-    "vite": "^x.y.z"
+    "@eslint/js": "9.39.2",
+    "@types/node": "22.19.15",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "9.39.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.13.0",
+    "typescript": "6.0.2",
+    "typescript-eslint": "8.71.1",
+    "vite": "8.3.4"
   }
 }

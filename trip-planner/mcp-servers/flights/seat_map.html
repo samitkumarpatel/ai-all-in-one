@@ -1,0 +1,132 @@
+<!doctype html>
+<!--
+  MCP App "view" for the pick_seat tool (Step 8), served as the resource ui://flights/seat-map.html.
+
+  The host renders this page in a sandboxed iframe and talks to it with JSON-RPC 2.0 over postMessage:
+    view -> host  ui/initialize (request), then ui/notifications/initialized
+    host -> view  ui/notifications/tool-result   (the pick_seat result: which seats are taken)
+    view -> host  ui/message                     (the chosen seat, as a user chat message)
+    view -> host  ui/notifications/size-changed  (so the host can size the iframe)
+
+  Real apps usually use the `App` class from @modelcontextprotocol/ext-apps instead of hand-written
+  postMessage code. It is written out here so every protocol message is visible.
+-->
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --fg: #1f2933; --muted: #6b7280; --seat: #e5e7eb; --taken: #9ca3af; --pick: #2563eb; --bg: #ffffff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg: #e5e7eb; --muted: #9ca3af; --seat: #374151; --taken: #1f2937; --pick: #3b82f6; --bg: #111827; }
+  }
+  body { margin: 0; padding: 12px; font: 14px system-ui, sans-serif; color: var(--fg); background: var(--bg); }
+  h3 { margin: 0 0 4px; }
+  p { margin: 0 0 10px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(3, 34px) 18px repeat(3, 34px); gap: 6px; }
+  .seat { height: 30px; border: 0; border-radius: 6px; background: var(--seat); color: var(--fg); cursor: pointer; font-size: 11px; }
+  .seat:disabled { background: var(--taken); cursor: not-allowed; opacity: 0.5; }
+  .seat.picked { background: var(--pick); color: #fff; }
+  .row { color: var(--muted); font-size: 11px; text-align: center; align-self: center; }
+  .confirm { margin-top: 12px; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--pick); color: #fff; cursor: pointer; }
+  .confirm:disabled { opacity: 0.4; cursor: default; }
+</style>
+</head>
+<body>
+  <h3 id="title">Seat map</h3>
+  <p id="status">Waiting for flight data…</p>
+  <div id="grid" class="grid"></div>
+  <button id="confirm" class="confirm" disabled>Choose a seat</button>
+
+<script>
+  // ---- Tiny JSON-RPC over postMessage ------------------------------------
+  let nextId = 1;
+  const pending = new Map();
+
+  function request(method, params) {
+    const id = nextId++;
+    window.parent.postMessage({ jsonrpc: "2.0", id, method, params }, "*");
+    return new Promise((resolve) => pending.set(id, resolve));
+  }
+
+  function notify(method, params) {
+    window.parent.postMessage({ jsonrpc: "2.0", method, params }, "*");
+  }
+
+  window.addEventListener("message", (e) => {
+    const msg = e.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+
+    if (msg.id !== undefined && pending.has(msg.id)) {   // a response to one of our requests
+      pending.get(msg.id)(msg.result ?? msg.error);
+      pending.delete(msg.id);
+    } else if (msg.method === "ui/notifications/tool-result") {
+      render(msg.params.structuredContent);
+    }
+  });
+
+  // ---- Seat map ----------------------------------------------------------
+  let flightId = null;
+  let picked = null;
+
+  function render(seatMap) {
+    flightId = seatMap.flight_id;
+    document.getElementById("title").textContent = `Seat map · ${flightId}`;
+    document.getElementById("status").textContent = "Pick a free seat. Grey seats are taken.";
+
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
+    for (let row = 1; row <= seatMap.rows; row++) {
+      seatMap.letters.forEach((letter, i) => {
+        if (i === seatMap.letters.length / 2) {         // the aisle
+          const label = document.createElement("span");
+          label.className = "row";
+          label.textContent = row;
+          grid.appendChild(label);
+        }
+        const seat = `${row}${letter}`;
+        const btn = document.createElement("button");
+        btn.className = "seat";
+        btn.textContent = seat;
+        btn.disabled = seatMap.taken.includes(seat);
+        btn.onclick = () => pick(seat, btn);
+        grid.appendChild(btn);
+      });
+    }
+    reportSize();
+  }
+
+  function pick(seat, btn) {
+    document.querySelectorAll(".seat.picked").forEach((b) => b.classList.remove("picked"));
+    btn.classList.add("picked");
+    picked = seat;
+    const confirm = document.getElementById("confirm");
+    confirm.disabled = false;
+    confirm.textContent = `Confirm seat ${seat}`;
+  }
+
+  document.getElementById("confirm").onclick = async () => {
+    // ui/message: ask the host to post this into the chat as if the user typed it
+    await request("ui/message", {
+      role: "user",
+      content: [{ type: "text", text: `I'd like seat ${picked} on flight ${flightId}.` }],
+    });
+    document.getElementById("status").textContent = `Seat ${picked} sent to the assistant.`;
+    document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  };
+
+  function reportSize() {
+    notify("ui/notifications/size-changed", { height: document.documentElement.scrollHeight });
+  }
+
+  // ---- Handshake ---------------------------------------------------------
+  request("ui/initialize", {
+    appInfo: { name: "seat-map", version: "1.0.0" },
+    appCapabilities: {},
+    protocolVersion: "2026-01-26",
+  }).then(() => {
+    notify("ui/notifications/initialized", {});
+    reportSize();
+  });
+</script>
+</body>
+</html>

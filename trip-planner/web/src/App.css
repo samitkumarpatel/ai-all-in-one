@@ -123,8 +123,10 @@ body {
   border-radius: 12px;
 }
 
-.notice {
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-style: italic;
+/* MCP Apps (Step 8): sandboxed iframes, height set by the app */
+.mcp-app {
+  width: 100%;
+  max-width: 80%;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
 }

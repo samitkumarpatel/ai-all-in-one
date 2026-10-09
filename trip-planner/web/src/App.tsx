@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { runAgent, type AguiEvent, type ChatMessage } from "./agui";
 import { extractA2uiOperations, Surfaces, useA2ui } from "./a2ui";
+import { extractMcpApp, McpAppFrame, type McpApp } from "./mcpApp";
 import "./App.css";
 
 type LogEntry = { n: number; event: AguiEvent };
@@ -12,19 +13,21 @@ export default function App() {
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [mcpApps, setMcpApps] = useState<{ id: string; app: McpApp }[]>([]);
 
   const threadId = useRef(crypto.randomUUID());
   const counter = useRef(0);
 
-  // A2UI: user actions (e.g. clicking "Book") come back here
+  // A2UI: user actions (e.g. clicking "Book") come back here and are sent to the agent as a message
   const { surfaces, apply } = useA2ui((action) => {
-    setNotice(`UI action received (demo only): ${JSON.stringify(action)}`);
+    if (action.name === "book_hotel") send(`Book hotel ${action.context.hotelId}.`);
   });
 
   function handleEvent(event: AguiEvent) {
     // 1) Raw event log
-    setLog((prev) => [...prev, { n: ++counter.current, event }]);
+    // (n is computed outside the updater, because React StrictMode runs updaters twice in dev)
+    const n = ++counter.current;
+    setLog((prev) => [...prev, { n, event }]);
 
     // 2) Map events to UI state
     switch (event.type) {
@@ -49,6 +52,9 @@ export default function App() {
             setError(`A2UI render failed: ${e instanceof Error ? e.message : String(e)}`);
           }
         }
+        // An MCP App arrives as a tool result containing { mcp_app: {...} }
+        const app = extractMcpApp(event.content);
+        if (app) setMcpApps((prev) => [...prev, { id: event.toolCallId, app }]);
         break;
       }
       case "RUN_ERROR":
@@ -57,8 +63,8 @@ export default function App() {
     }
   }
 
-  async function send() {
-    const text = input.trim();
+  // Sends the typed text, or a message coming from the UI (A2UI action or MCP App ui/message)
+  async function send(text = input.trim()) {
     if (!text || running) return;
 
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content: text };
@@ -67,7 +73,6 @@ export default function App() {
     setMessages(history);
     setInput("");
     setError(null);
-    setNotice(null);
     setActivity([]);
     setRunning(true);
 
@@ -101,7 +106,11 @@ export default function App() {
           {/* A2UI surfaces rendered by @a2ui/react */}
           <Surfaces surfaces={surfaces} />
 
-          {notice && <div className="notice">{notice}</div>}
+          {/* MCP Apps rendered in sandboxed iframes */}
+          {mcpApps.map(({ id, app }) => (
+            <McpAppFrame key={id} app={app} onMessage={send} />
+          ))}
+
           {error && <div className="error">{error}</div>}
         </div>
 
@@ -113,7 +122,7 @@ export default function App() {
             placeholder="Ask about a trip…"
             disabled={running}
           />
-          <button onClick={send} disabled={running || !input.trim()}>
+          <button onClick={() => send()} disabled={running || !input.trim()}>
             {running ? "Running…" : "Send"}
           </button>
         </div>

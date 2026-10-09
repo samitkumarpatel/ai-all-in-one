@@ -1,0 +1,119 @@
+# Runs the whole trip planner with one command:
+#
+#   1. Put your Azure secrets in a Docker env file (default: trip-planner/.env):
+#        AZURE_API_KEY=...
+#        AZURE_API_BASE=https://<your-resource>.openai.azure.com/
+#        AZURE_API_VERSION=2024-02-01
+#        AZURE_DEPLOYMENT_NAME=<your-deployment-name>
+#   2. docker compose up --build                          (uses .env)
+#      ENV_FILE=/path/to/azure.env docker compose up --build   (uses another file)
+#
+#   Option B (own AG-UI client):  http://localhost:5173
+#   Option A (CopilotKit):        http://localhost:5174
+#
+# Inside the Docker network, services reach each other by service name (e.g. http://flights-mcp:8001).
+# Start order is handled by healthchecks: MCP servers -> A2A agents -> orchestrator -> frontends.
+
+x-healthcheck: &healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 20
+
+services:
+  # ---- MCP servers (mock data) ----------------------------------------------
+  flights-mcp:
+    build: ./mcp-servers/flights
+    environment:
+      HOST: 0.0.0.0
+    ports: ["8001:8001"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8001))"]
+
+  hotels-mcp:
+    build: ./mcp-servers/hotels
+    environment:
+      HOST: 0.0.0.0
+    ports: ["8004:8004"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8004))"]
+
+  # ---- A2A agents (one image, built from agents/) ----------------------------
+  # ADK's A2A client only allows plain http for "localhost" names (anything ending in .localhost
+  # counts). So each agent also gets a *.localhost alias on the Docker network, and that is the
+  # name in its Agent Card and in the orchestrator's URLs. Without it, ADK refuses the card.
+  flight-agent:
+    build: ./agents
+    image: trip-planner-agents
+    command: ["uvicorn", "flight_a2a:a2a_app", "--host", "0.0.0.0", "--port", "8002"]
+    env_file: ${ENV_FILE:-.env} # Azure secrets, passed straight into the container
+    environment:
+      A2A_HOST: flight-agent.localhost # advertised in the Agent Card
+      FLIGHTS_MCP_URL: http://flights-mcp:8001/mcp
+    ports: ["8002:8002"]
+    networks:
+      default:
+        aliases: [flight-agent.localhost]
+    depends_on:
+      flights-mcp: { condition: service_healthy }
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/.well-known/agent-card.json')"]
+
+  hotel-agent:
+    image: trip-planner-agents
+    command: ["uvicorn", "hotel_a2a:a2a_app", "--host", "0.0.0.0", "--port", "8005"]
+    env_file: ${ENV_FILE:-.env} # Azure secrets, passed straight into the container
+    environment:
+      A2A_HOST: hotel-agent.localhost
+      HOTELS_MCP_URL: http://hotels-mcp:8004/mcp
+    ports: ["8005:8005"]
+    networks:
+      default:
+        aliases: [hotel-agent.localhost]
+    depends_on:
+      flight-agent: { condition: service_started } # builds the shared image first
+      hotels-mcp: { condition: service_healthy }
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/.well-known/agent-card.json')"]
+
+  # ---- Orchestrator over AG-UI ----------------------------------------------
+  orchestrator:
+    image: trip-planner-agents
+    command: ["uvicorn", "agui_server:app", "--host", "0.0.0.0", "--port", "8003"]
+    env_file: ${ENV_FILE:-.env} # Azure secrets, passed straight into the container
+    environment:
+      FLIGHT_AGENT_URL: http://flight-agent.localhost:8002
+      HOTEL_AGENT_URL: http://hotel-agent.localhost:8005
+      FLIGHTS_MCP_URL: http://flights-mcp:8001/mcp # for the seat-map MCP App
+    ports: ["8003:8003"]
+    depends_on:
+      flight-agent: { condition: service_healthy }
+      hotel-agent: { condition: service_healthy }
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8003))"]
+
+  # ---- Option B frontend (nginx serves the build and proxies /agui) ----------
+  web:
+    build: ./web
+    ports: ["${WEB_PORT:-5173}:80"]
+    depends_on:
+      orchestrator: { condition: service_healthy }
+
+  # ---- Option A: CopilotKit runtime + frontend -------------------------------
+  copilot-runtime:
+    build: ./copilot-runtime
+    environment:
+      AGUI_URL: http://orchestrator:8003/agui
+    ports: ["4000:4000"]
+    depends_on:
+      orchestrator: { condition: service_healthy }
+
+  web-copilotkit:
+    build: ./web-copilotkit
+    ports: ["${WEB_COPILOTKIT_PORT:-5174}:80"]
+    depends_on:
+      copilot-runtime: { condition: service_started }

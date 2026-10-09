@@ -21,7 +21,8 @@ MODEL = LiteLlm(model=f"azure/{AZURE_DEPLOYMENT}")
 flights_tools = McpToolset(
     connection_params=StreamableHTTPConnectionParams(url=FLIGHTS_MCP_URL),
     # Expose only search_flights for now. choose_seat_preference uses MCP elicitation,
-    # which the agent framework may not support yet. We revisit it in the frontend steps.
+    # which the agent framework may not support yet. pick_seat (an MCP App) is used by the
+    # orchestrator instead, because its UI would be lost if it went through A2A as text.
     tool_filter=["search_flights"],
 )
 
@@ -34,6 +35,8 @@ root_agent = LlmAgent(
         "Use the search_flights tool with IATA airport codes (e.g. CPH, AMS) and an ISO date (YYYY-MM-DD). "
         "If the user gives a city name, convert it to its airport code. "
         "If origin, destination, or date is missing, ask for it. "
+        "If you are asked for a return flight too, search both directions. "
+        "Always include each flight's id (e.g. FL101), times and price. "
         "Recommend the best option and briefly explain the trade-off between price and departure time. "
         "Only use data returned by the tool; never invent flights."
     ),

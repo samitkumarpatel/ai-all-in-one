@@ -5,6 +5,7 @@ Run from the agents/ folder:
 
 Agent Card: http://127.0.0.1:8002/.well-known/agent-card.json
 """
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -21,7 +22,8 @@ from flight_agent.agent import root_agent  # noqa: E402
 # from the agent's name, description and tools. The port must match uvicorn's,
 # because it is advertised inside the card. The host must also match the URL clients
 # fetch the card from (to_a2a defaults to "localhost"; the orchestrator uses 127.0.0.1).
-a2a_app = to_a2a(root_agent, host="127.0.0.1", port=8002)
+# In Docker, A2A_HOST is the service name ("flight-agent").
+a2a_app = to_a2a(root_agent, host=os.getenv("A2A_HOST", "127.0.0.1"), port=8002)
 
 # another way of configuring the card.
 

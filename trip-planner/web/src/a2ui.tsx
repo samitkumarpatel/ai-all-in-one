@@ -1,7 +1,7 @@
 // Option B: render A2UI directly with Google's renderer (@a2ui/react + @a2ui/web_core).
 // No CopilotKit. Our own AG-UI client hands A2UI operations to a MessageProcessor.
 import { useEffect, useRef, useState } from "react";
-import { MessageProcessor } from "@a2ui/web_core/v0_9";
+import { MessageProcessor, type ActionPayload } from "@a2ui/web_core/v0_9";
 import { A2uiSurface, basicCatalog } from "@a2ui/react/v0_9";
 
 type Operation = Record<string, any>;
@@ -21,13 +21,15 @@ export function extractA2uiOperations(content: unknown): Operation[] | null {
   }
 }
 
-export function useA2ui(onAction: (action: unknown) => void) {
+export function useA2ui(onAction: (action: ActionPayload) => void) {
   // Keep the latest callback without recreating the processor
   const actionRef = useRef(onAction);
-  actionRef.current = onAction;
+  useEffect(() => {
+    actionRef.current = onAction;
+  });
 
   const [processor] = useState(
-    () => new MessageProcessor([basicCatalog], ((action: unknown) => actionRef.current(action)) as any),
+    () => new MessageProcessor([basicCatalog], (action) => actionRef.current(action)),
   );
   const [surfaces, setSurfaces] = useState<any[]>([]);
 

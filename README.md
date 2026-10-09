@@ -111,6 +111,14 @@ An official MCP extension that lets a tool return an **interactive UI** along wi
 
 **Mental model:** a tool returns data *and* a mini web app to display it.
 
+### How it works
+
+1. The tool definition links to its UI: `_meta.ui.resourceUri = "ui://..."`
+2. The host calls the tool and reads that resource (MIME type `text/html;profile=mcp-app`)
+3. The host renders the HTML in a sandboxed iframe, and the two talk with JSON-RPC over `postMessage`: `ui/initialize`, `ui/notifications/tool-result`, `ui/message`, and so on
+
+**In this repo:** the trip planner's seat picker (Step 8 in [BUILD_LOG.md](./BUILD_LOG.md)). The `pick_seat` tool and its `ui://flights/seat-map.html` resource live in `trip-planner/mcp-servers/flights/`, and the iframe host is `trip-planner/web/src/mcpApp.tsx`.
+
 ---
 
 ## AI Agents

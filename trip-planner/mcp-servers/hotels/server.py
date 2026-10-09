@@ -3,6 +3,7 @@
 Run over Streamable HTTP: uv run server.py        -> http://127.0.0.1:8004/mcp
 Run over stdio:           uv run server.py stdio
 """
+import os
 import sys
 from datetime import date
 
@@ -65,4 +66,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "stdio":
         mcp.run()
     else:
-        mcp.run(transport="http", host="127.0.0.1", port=8004)
+        # HOST=0.0.0.0 in Docker, so other containers can reach the server
+        mcp.run(transport="http", host=os.getenv("HOST", "127.0.0.1"), port=8004)

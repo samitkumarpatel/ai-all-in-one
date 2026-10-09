@@ -72,3 +72,13 @@ body {
   background: #16a34a;
   cursor: default;
 }
+
+/* MCP Apps (Step 8): sandboxed iframes, height set by the app */
+.mcp-app {
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.tool-note { color: var(--muted); font-size: 0.85rem; }

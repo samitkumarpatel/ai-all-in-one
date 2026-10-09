@@ -1,27 +1,32 @@
 {
 	"name": "my-dev-machine",
 	"image": "ghcr.io/samitkumarpatel/my-dev-machine:main",
-	"runArgs": ["--env-file", "${localEnv:HOME}/.my-dev-machine", "--userns=keep-id:uid=1000,gid=1000"],
+	"runArgs": [
+		"--env-file", "${localEnv:HOME}/.my-dev-machine",
+		"--userns=keep-id:uid=1000,gid=1000",
+		"--security-opt", "label=disable"
+	],
+	"init": true,
 	"remoteUser": "samitkumarpatel-dev",
-	"updateRemoteUserUID": true,
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [8080, 3000],
+	"updateRemoteUserUID": false,
 	"containerEnv": {
-		"TERM":"xterm-256color"
+		"TERM": "xterm-256color",
+		"DOCKER_BUILDKIT": "0",
+		"TESTCONTAINERS_HOST_OVERRIDE": "host.containers.internal",
+		"TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE": "/run/user/501/podman/podman.sock",
+		"TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED": "true"
 	},
+	"forwardPorts": [8080, 3000],
 	"mounts": [
-		{ "source": "${localEnv:HOME}/workspace/samitkumarpatel", "target": "/home/samitkumarpatel-dev/github", "type": "bind" }
-	]
+		{ "type": "bind", "source": "/run/user/501/podman/podman.sock", "target": "/var/run/docker.sock" },
+		{ "type": "bind", "source": "${localEnv:HOME}/workspace/samitkumarpatel", "target": "${localEnv:HOME}/workspace/samitkumarpatel" }
+	],
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "zsh"
+			}
+		}
+	}
 }
